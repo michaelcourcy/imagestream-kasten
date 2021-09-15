@@ -1,0 +1,153 @@
+apiVersion: cr.kanister.io/v1alpha1
+kind: Blueprint
+metadata:
+  name: imagestream-bp
+  namespace: kasten-io
+actions:
+  backup: 
+    outputArtifacts:
+      cloudObject:
+        keyValue:
+          tagdate: "{{ .Phases.initBackup.Output.tagdate }}"  
+          tags: "{{ .Phases.initBackup.Output.tags }}" 
+    phases:
+    - func: KubeTask
+      name: initBackup
+      args:
+        image: ghcr.io/kanisterio/kanister-kubectl-1.18:0.57.0
+        namespace: "{{ .Object.metadata.namespace }}"
+        command:
+          - sh
+          - -o
+          - errexit
+          - -o
+          - pipefail
+          - -c
+          - |
+            namespace="{{ .Object.metadata.namespace }}"
+            tagdate="{{ toDate "2006-01-02T15:04:05.999999999Z07:00" .Time | date "2006-01-02T15:04:05Z07:00" | toString | replace ":" "-" | lower }}"
+            kando output tagdate $tagdate     
+            tags="{{range $i, $tag := .Object.status.tags}}{{ index $tag "tag" | toString  }}|{{end}}"
+            kando output tags $tags     
+            secret=$(kubectl get secret -o name -n $namespace | grep builder-token | tail -1)
+            buildertoken=$(kubectl get $secret -n $namespace -o jsonpath='{.data.token}'|base64 -d)
+            kando output buildertoken $buildertoken
+    - func: KubeTask
+      name: imageBackup
+      objects:
+        imgmnt:
+          kind: Secret
+          name: image-management
+          namespace: '{{ .Object.metadata.namespace }}'
+      args:
+        image: ananace/skopeo
+        namespace: "{{ .Object.metadata.namespace }}"
+        command:
+          - sh
+          - -o
+          - errexit
+          - -o
+          - pipefail
+          - -c
+          - |
+            # the image we want to backup at the date of the backup
+            tagdate="{{ .Phases.initBackup.Output.tagdate }}"
+            namespace="{{ .Object.metadata.namespace }}"
+            image="{{ .Object.metadata.name }}"
+            
+            # internal registry and credential
+            internalRegistry="{{ index .Phases.imageBackup.Secrets.imgmnt.Data "internalRegistryBackup" | toString }}"
+            internalRegistryRepository="$internalRegistry/$namespace/$image"
+            internalRegistryUser="serviceaccount"
+            internalRegistryPwd="{{ .Phases.initBackup.Output.buildertoken }}"
+            
+            # external registry and credential 
+            externalRegistry="{{ index .Phases.imageBackup.Secrets.imgmnt.Data "externalRegistry" | toString }}"
+            externalRegistryNamespace="{{ index .Phases.imageBackup.Secrets.imgmnt.Data "externalRegistryNamespace" | toString }}"
+            externalRegistryRepository="$externalRegistry/$externalRegistryNamespace/$image"
+            externalRegistryUser="{{ index .Phases.imageBackup.Secrets.imgmnt.Data "externalRegistryUser" | toString }}"
+            externalRegistryPwd="{{ index .Phases.imageBackup.Secrets.imgmnt.Data "externalRegistryPwd" | toString }}"
+
+            {{range $i, $tag := .Object.status.tags}}
+            tagname="{{ index $tag "tag" | toString  }}"
+            skopeo copy \
+                 --src-creds="$internalRegistryUser:$internalRegistryPwd" \
+                 --dest-creds="$externalRegistryUser:$externalRegistryPwd" \
+                 --src-tls-verify=false \
+                 docker://$internalRegistryRepository:$tagname \
+                 docker://$externalRegistryRepository:$tagname-$tagdate
+            echo "Successfully backup image $internalRegistryRepository:$tagname to $externalRegistryRepository:$tagname-$tagdate"        
+            {{end}}
+
+            # sleep 3 to give a chance to output logs            
+            sleep 3
+  restore:    
+    inputArtifactNames:
+    - cloudObject          
+    phases:
+    - func: KubeTask
+      name: initRestore
+      args:
+        image: ghcr.io/kanisterio/kanister-kubectl-1.18:0.57.0
+        namespace: "{{ .Object.metadata.namespace }}"
+        command:
+          - sh
+          - -o
+          - errexit
+          - -o
+          - pipefail
+          - -c
+          - |          
+            namespace="{{ .Object.metadata.namespace }}"
+            secret=$(kubectl get secret -o name -n $namespace | grep builder-token | tail -1)
+            buildertoken=$(kubectl get $secret -n $namespace -o jsonpath='{.data.token}'|base64 -d)
+            kando output buildertoken $buildertoken
+    - func: KubeTask
+      name: imageRestore
+      objects:
+        imgmnt:
+          kind: Secret
+          name: image-management
+          namespace: '{{ .Object.metadata.namespace }}'
+      args:
+        image: ananace/skopeo
+        namespace: "{{ .Object.metadata.namespace }}"
+        command:
+          - sh
+          - -o
+          - errexit
+          - -o
+          - pipefail
+          - -c
+          - |
+            # the tags we want to restore at the date of the backup
+            tagdate="{{ .ArtifactsIn.cloudObject.KeyValue.tagdate }}" 
+            tags="{{ .ArtifactsIn.cloudObject.KeyValue.tags }}"
+            namespace="{{ .Object.metadata.namespace }}"
+            image="{{ .Object.metadata.name }}"
+            
+            # internal registry and credential
+            internalRegistry="{{ index .Phases.imageRestore.Secrets.imgmnt.Data "internalRegistryRestore" | toString }}"
+            internalRegistryRepository="$internalRegistry/$namespace/$image"
+            internalRegistryUser="serviceaccount"
+            internalRegistryPwd="{{ .Phases.initRestore.Output.buildertoken }}"
+            
+            # external registry and credential 
+            externalRegistry="{{ index .Phases.imageRestore.Secrets.imgmnt.Data "externalRegistry" | toString }}"
+            externalRegistryNamespace="{{ index .Phases.imageRestore.Secrets.imgmnt.Data "externalRegistryNamespace" | toString }}"
+            externalRegistryRepository="$externalRegistry/$externalRegistryNamespace/$image"
+            externalRegistryUser="{{ index .Phases.imageRestore.Secrets.imgmnt.Data "externalRegistryUser" | toString }}"
+            externalRegistryPwd="{{ index .Phases.imageRestore.Secrets.imgmnt.Data "externalRegistryPwd" | toString }}"
+
+            for tagname in $(echo $tags | tr "|" "\n")
+            do
+              skopeo copy \
+                  --src-creds="$externalRegistryUser:$externalRegistryPwd" \
+                  --dest-creds="$internalRegistryUser:$internalRegistryPwd" \
+                  --dest-tls-verify=false \
+                  docker://$externalRegistryRepository:$tagname-$tagdate \
+                  docker://$internalRegistryRepository:$tagname
+              echo "Successfully restore image $externalRegistryRepository:$tagname-$tagdate to $internalRegistryRepository:$tagname"        
+            done
+            # sleep 3 to give a chance to output logs"             
+            sleep 3     

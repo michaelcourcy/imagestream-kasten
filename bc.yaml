@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  annotations:
+    description: Defines how to build the application
+    template.alpha.openshift.io/wait-for-ready: "true"
+  name: my-build
+  namespace: is-test
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: python-mic:django
+  postCommit:
+    script: ./manage.py test
+  source:
+    contextDir: 
+    git:
+      ref: 
+      uri: https://github.com/sclorg/django-ex.git
+    type: Git
+  strategy:
+    sourceStrategy:
+      env:
+      - name: PIP_INDEX_URL
+        value: 
+      from:
+        kind: ImageStreamTag
+        name: python:3.8-ubi8
+        namespace: openshift
+    type: Source
