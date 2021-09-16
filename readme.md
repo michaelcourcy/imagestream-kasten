@@ -64,14 +64,13 @@ oc create secret generic image-management \
    --from-literal="externalRegistryUser=michaelcourcy" \
    --from-literal="externalRegistryPwd="<MY_PASSWORD>"" \
    --from-literal="internalRegistryBackup=image-registry.openshift-image-registry.svc:5000" \
-   --from-literal="internalRegistryRestore=image-registry.openshift-image-registry.svc:5000" \
-   --from-literal="tagname=1.0" \
+   --from-literal="internalRegistryRestore=image-registry.openshift-image-registry.svc:5000" 
    -n is-test
 ```
 
 Kanister pod execute skopeo with the default service account and must pickup the builder secret to push/pull from/to the internal registry.
 
-Make sure sa default can read secret 
+Make sure service account default can read secret : 
 ```
 oc create role secret-reader --verb=get --verb=list --verb=watch --resource=secrets -n is-test
 oc create rolebinding default-secret-reader --role=secret-reader --serviceaccount=is-test:default -n is-test
