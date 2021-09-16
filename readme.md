@@ -9,7 +9,9 @@ In a typical kubernetes deployment scenario, images are deployed in an external 
 Openshift bring the notion of imagestream that [has many benefits](https://docs.openshift.com/container-platform/4.7/openshift_images/images-understand.html#images-imagestream-use_images-understand) but needs an internal registry (a registry deployed inside the cluster) to work.   this internal registry has some drawbacks : 
 *  If you loose your cluster you also loose your images
 *  Internal registries are not intended to be open and used as a regular registry, that make migrations of your image from a cluster to another one impossible
-*  Images are very often updated by openshift build and my-image:latest on monday could be very different from my-image:latest on tuesday, capturing the data and the configuration of your application is not sufficient anymore, you need also to capture the image state at backup date.
+*  Images are very often updated by openshift build and my-image:latest on monday could be very different from my-image:latest on tuesday. 
+
+This blueprint ensure that you capture the state of your imagestream with its different tags along your applications. That make migration and restoration of your app seamless.
 
 ## How it works
 
