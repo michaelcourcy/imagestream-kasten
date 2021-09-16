@@ -49,20 +49,13 @@ oc create imagestream-bp.yaml
 oc annotate -n is-test is python-mic kanister.kasten.io/blueprint='imagestream-bp' 
 ```
 
-In this example I use docker.io for the external registry with my personal account hence my image will look like 
-```
-docker.io/michaelcourcy/python-mic:1.O-<backup_date>
-docker.io/michaelcourcy/python-mic:active-<backup_date>
-docker.io/michaelcourcy/python-mic:azure-functions-<backup_date>
-```
-
 Create a secret that configure the external and internal registry. 
 ```
 oc create secret generic image-management \
    --from-literal="externalRegistry=docker.io" \
    --from-literal="externalRegistryNamespace=michaelcourcy" \
-   --from-literal="externalRegistryUser=michaelcourcy" \
-   --from-literal="externalRegistryPwd="<MY_PASSWORD>" \
+   --from-literal="externalRegistryUser=<USERNAME>" \
+   --from-literal="externalRegistryPwd="<PASSWORD>" \
    --from-literal="internalRegistryBackup=image-registry.openshift-image-registry.svc:5000" \
    --from-literal="internalRegistryRestore=image-registry.openshift-image-registry.svc:5000" 
    -n is-test
@@ -84,6 +77,8 @@ Now you can backup this namespace with kasten. You'll see new images in your reg
 <your-registry>/<registry-namespace>/python-mic:active-<backup_date>
 <your-registry>/<registry-namespace>/python-mic:azure-functions-<backup_date>
 ```
+
+This is what happens with my personal account on docker.io.
 
 ![Images in docker.io](./docker-io.png)
 
