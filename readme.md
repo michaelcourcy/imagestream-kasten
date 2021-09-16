@@ -4,7 +4,9 @@ This is a [Kanister](https://docs.kasten.io/latest/kanister/kanister.html) bluep
 
 ## Motivation 
 
-In a kubernetes deployment scenario, images are deployed in a registry like docker.io or quay.io that does not depends on the good health of your cluster. Openshift bring the notion of imagestream that [has many benefits](https://docs.openshift.com/container-platform/4.7/openshift_images/images-understand.html#images-imagestream-use_images-understand) but needs an internal registry (a registry deployed inside the cluster) to work. However this internal registry has some drawbacks : 
+In a typical kubernetes deployment scenario, images are deployed in an external registry like docker.io or quay.io. The protection of those registries is not related to the protection of your kubernetes cluster. 
+
+Openshift bring the notion of imagestream that [has many benefits](https://docs.openshift.com/container-platform/4.7/openshift_images/images-understand.html#images-imagestream-use_images-understand) but needs an internal registry (a registry deployed inside the cluster) to work.   this internal registry has some drawbacks : 
 *  If you loose your cluster you also loose your images
 *  Internal registries are not intended to be open and used as a regular registry, that make migrations of your image from a cluster to another one impossible
 *  Images are very often updated by openshift build and my-image:latest on monday could be very different from my-image:latest on tuesday, capturing the data and the configuration of your application is not sufficient anymore, you need also to capture the image state at backup date.
@@ -82,7 +84,7 @@ Now you can backup this namespace with kasten. You'll see new images in your reg
 <your-registry>/<registry-namespace>/python-mic:azure-functions-<backup_date>
 ```
 
-![Images in docker.io][./docker-io.png]
+![Images in docker.io](./docker-io.png)
 
 When you restore to another cluster even in another namespace the images will be pushed back to the internal registry of this cluster, creating automatically the imagestream with the imagestream tags.
 
