@@ -11,7 +11,7 @@ Openshift bring the notion of imagestream that [has many benefits](https://docs.
 *  Internal registries are not intended to be open and used as a regular registry, that make migrations of your image from a cluster to another one impossible
 *  Images are very often updated by openshift build and my-image:latest on monday could be very different from my-image:latest on tuesday. 
 
-This blueprint ensure that you capture the state of your imagestream with its different tags along your applications. That make migration and restoration of your app seamless.
+This blueprint ensure that you capture the state of your imagestream with its different tags along your application state. That make migration and restoration of your app seamless.
 
 ## How it works
 
@@ -62,7 +62,7 @@ oc create secret generic image-management \
    --from-literal="externalRegistry=docker.io" \
    --from-literal="externalRegistryNamespace=michaelcourcy" \
    --from-literal="externalRegistryUser=michaelcourcy" \
-   --from-literal="externalRegistryPwd="<MY_PASSWORD>"" \
+   --from-literal="externalRegistryPwd="<MY_PASSWORD>" \
    --from-literal="internalRegistryBackup=image-registry.openshift-image-registry.svc:5000" \
    --from-literal="internalRegistryRestore=image-registry.openshift-image-registry.svc:5000" 
    -n is-test
