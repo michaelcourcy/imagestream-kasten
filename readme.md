@@ -55,9 +55,9 @@ oc create secret generic image-management \
    --from-literal="externalRegistry=docker.io" \
    --from-literal="externalRegistryNamespace=michaelcourcy" \
    --from-literal="externalRegistryUser=<USERNAME>" \
-   --from-literal="externalRegistryPwd="<PASSWORD>" \
+   --from-literal="externalRegistryPwd=<PASSWORD>" \
    --from-literal="internalRegistryBackup=image-registry.openshift-image-registry.svc:5000" \
-   --from-literal="internalRegistryRestore=image-registry.openshift-image-registry.svc:5000" 
+   --from-literal="internalRegistryRestore=image-registry.openshift-image-registry.svc:5000" \
    -n is-test
 ```
 
