@@ -24,7 +24,7 @@ actions:
             - -o
             - pipefail
             - -c
-            - >
+            - |
               name="{{ .Object.metadata.name }}"
               kando output name $name
               namespace="{{ .Object.metadata.namespace }}"
@@ -56,7 +56,7 @@ actions:
             - -o
             - pipefail
             - -c
-            - >
+            - |
               # the image we want to backup at the date of the backup
               tagdate="{{ .Phases.initBackup.Output.tagdate }}"
               namespace="{{ .Object.metadata.namespace }}"
@@ -102,7 +102,7 @@ actions:
             - -o
             - pipefail
             - -c
-            - >
+            - |
               namespace="{{ .Object.metadata.namespace }}"
               secret=$(kubectl get secret -o name -n $namespace | grep builder-token | tail -1)
               buildertoken=$(kubectl get $secret -n $namespace -o jsonpath='{.data.token}'|base64 -d)
@@ -127,7 +127,7 @@ actions:
             - -o
             - pipefail
             - -c
-            - >
+            - |
               # the tags we want to restore at the date of the backup
               tagdate="{{ .ArtifactsIn.cloudObject.KeyValue.tagdate }}" 
               tags="{{ .ArtifactsIn.cloudObject.KeyValue.tags }}"
