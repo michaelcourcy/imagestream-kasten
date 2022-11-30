@@ -2,56 +2,7 @@ kind: Blueprint
 apiVersion: cr.kanister.io/v1alpha1
 metadata:
   name: imagestream-bp
-  namespace: kasten-io
-  uid: eeea4fc8-ddb7-4a2d-bd73-c08cd75ceab9
-  resourceVersion: "268140343"
-  generation: 5
-  creationTimestamp: 2021-11-23T08:19:43Z
-  managedFields:
-    - manager: kubectl-client-side-apply
-      operation: Update
-      apiVersion: cr.kanister.io/v1alpha1
-      time: 2021-11-23T08:19:43Z
-      fieldsType: FieldsV1
-      fieldsV1:
-        f:actions:
-          .: {}
-          f:backup:
-            .: {}
-            f:outputArtifacts:
-              .: {}
-              f:cloudObject:
-                .: {}
-                f:keyValue:
-                  .: {}
-                  f:tagdate: {}
-                  f:tags: {}
-          f:restore:
-            .: {}
-            f:inputArtifactNames: {}
-    - manager: kubectl-replace
-      operation: Update
-      apiVersion: cr.kanister.io/v1alpha1
-      time: 2021-12-03T09:12:42Z
-      fieldsType: FieldsV1
-      fieldsV1:
-        f:actions:
-          f:backup:
-            f:outputArtifacts:
-              f:cloudObject:
-                f:keyValue:
-                  f:name: {}
-    - manager: kubectl-edit
-      operation: Update
-      apiVersion: cr.kanister.io/v1alpha1
-      time: 2022-11-30T15:11:30Z
-      fieldsType: FieldsV1
-      fieldsV1:
-        f:actions:
-          f:backup:
-            f:phases: {}
-          f:restore:
-            f:phases: {}
+  namespace: kasten-io 
 actions:
   backup:
     name: ""
@@ -86,7 +37,7 @@ actions:
               kando output buildertoken $buildertoken              
               sleep 1
           image: ghcr.io/kanisterio/kanister-kubectl-1.18:0.57.0
-          namespace: "{{ .Object.metadata.namespace }}"
+          #namespace: "{{ .Object.metadata.namespace }}"
       - func: KubeTask
         name: imageBackup
         objects:
@@ -134,7 +85,7 @@ actions:
               sleep 3
               {{end}}            
           image: ananace/skopeo
-          namespace: "{{ .Object.metadata.namespace }}"
+          #namespace: "{{ .Object.metadata.namespace }}"
   restore:
     name: ""
     kind: ""
@@ -157,7 +108,7 @@ actions:
               buildertoken=$(kubectl get $secret -n $namespace -o jsonpath='{.data.token}'|base64 -d)
               kando output buildertoken $buildertoken
           image: ghcr.io/kanisterio/kanister-kubectl-1.18:0.57.0
-          namespace: "{{ .Object.metadata.namespace }}"
+          #namespace: "{{ .Object.metadata.namespace }}"
       - func: KubeTask
         name: imageRestore
         objects:
@@ -206,4 +157,4 @@ actions:
               # sleep 3 to give a chance to output logs"             
               sleep 3     
           image: ananace/skopeo
-          namespace: "{{ .Object.metadata.namespace }}"
+          #namespace: "{{ .Object.metadata.namespace }}"
