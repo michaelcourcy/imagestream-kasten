@@ -37,7 +37,7 @@ actions:
               kando output buildertoken $buildertoken              
               sleep 1
           image: ghcr.io/kanisterio/kanister-kubectl-1.18:0.57.0
-          #namespace: "{{ .Object.metadata.namespace }}"
+          namespace: "{{ .Object.metadata.namespace }}"
       - func: KubeTask
         name: imageBackup
         objects:
@@ -85,7 +85,7 @@ actions:
               sleep 3
               {{end}}            
           image: ananace/skopeo
-          #namespace: "{{ .Object.metadata.namespace }}"
+          namespace: "{{ .Object.metadata.namespace }}"
   restore:
     name: ""
     kind: ""
@@ -108,7 +108,7 @@ actions:
               buildertoken=$(kubectl get $secret -n $namespace -o jsonpath='{.data.token}'|base64 -d)
               kando output buildertoken $buildertoken
           image: ghcr.io/kanisterio/kanister-kubectl-1.18:0.57.0
-          #namespace: "{{ .Object.metadata.namespace }}"
+          namespace: "{{ .Object.metadata.namespace }}"
       - func: KubeTask
         name: imageRestore
         objects:
@@ -157,4 +157,4 @@ actions:
               # sleep 3 to give a chance to output logs"             
               sleep 3     
           image: ananace/skopeo
-          #namespace: "{{ .Object.metadata.namespace }}"
+          namespace: "{{ .Object.metadata.namespace }}"
