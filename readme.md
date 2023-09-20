@@ -44,10 +44,11 @@ oc get is python-mic -o jsonpath='{.status.tags[*].tag}'
 ### install the blueprint 
 
 ```
-oc create imagestream-bp.yaml 
+oc create -f imagestream-bp.yaml 
 # annotate the is 
 oc annotate -n is-test is python-mic kanister.kasten.io/blueprint='imagestream-bp' 
 ```
+
 
 Create a secret that configure the external and internal registry. 
 ```
@@ -68,6 +69,22 @@ Make sure service account default can read secret :
 oc create role secret-reader --verb=get --verb=list --verb=watch --resource=secrets -n is-test
 oc create rolebinding default-secret-reader --role=secret-reader --serviceaccount=is-test:default -n is-test
 ```
+
+### Using a blueprint binding instead of an annotation 
+
+If you don't want to annotate each imagestream because you have a lot of them and this activity may be tedious
+and error prone, you can use a blueprintbinding, I provide an example 
+[here](./imagestream-blueprint-binding.yaml) that will apply this blueprint for all imagestreams, except for imagestream that has one of this annotations : 
+- `kanister.kasten.io/blueprint` : for this specific imagestream you specify another blueprint
+- `kanister.kasten.io/nobackup` : you simply want to exlude this imagestream from the blueprint binding 
+
+To apply the blueprint binding execute 
+```
+oc create -f imagestream-blueprint-binding.yaml
+```
+
+** Be aware that now this blueprint will be applied to any imagestream that you will backup and the blueprint 
+expect a secret `image-management` in the namespace of the imagestream, if this secret is not there you'll have an error. ** 
 
 # Backup and restore
 

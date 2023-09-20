@@ -1,0 +1,22 @@
+apiVersion: config.kio.kasten.io/v1alpha1
+kind: BlueprintBinding
+metadata:
+  name: imagestream-binding
+  namespace: kasten-io  
+spec:
+  blueprintRef:
+    name: imagestream-bp
+    namespace: kasten-io
+  resources:
+    matchAll:
+    - type:
+        operator: In
+        values:
+        - group: image.openshift.io
+          resource: imagestreams
+    - annotations:
+        key: kanister.kasten.io/blueprint
+        operator: DoesNotExist
+    - annotations:
+        key: kanister.kasten.io/nobackup
+        operator: DoesNotExist
