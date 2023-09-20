@@ -83,7 +83,7 @@ To apply the blueprint binding execute
 oc create -f imagestream-blueprint-binding.yaml
 ```
 
-> **_ Be aware _** that now this blueprint will be applied to any imagestream that you will backup and the blueprint expect a secret `image-management` in the namespace of the imagestream, if this secret is not there you'll have an error.
+> **Be aware** that now this blueprint will be applied to any imagestream that you will backup and the blueprint expect a secret `image-management` in the namespace of the imagestream, if this secret is not there you'll have an error.
 
 # Backup and restore
 
