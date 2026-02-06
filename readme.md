@@ -1,110 +1,73 @@
 # Include imagestream in kasten backup 
 
-This is a [Kanister](https://docs.kasten.io/latest/kanister/kanister.html) blueprint you can use with [Kasten](https://www.kasten.io) to include your imagestream in the backup of your application.
+This repo is not anymore a blueprint example for backing up image stream because kasten support them now.
 
-## Motivation 
+It's more for testing them, I provide several example of ImageStreamTag that you can use to test.
 
-In a typical kubernetes deployment scenario, images are deployed in an external registry like docker.io or quay.io. The protection of those registries is not related to the protection of your kubernetes cluster. 
 
-Openshift bring the notion of imagestream that [has many benefits](https://docs.openshift.com/container-platform/4.7/openshift_images/images-understand.html#images-imagestream-use_images-understand) but needs an internal registry (a registry deployed inside the cluster) to work.   this internal registry has some drawbacks : 
-*  If you loose your cluster you also loose your images
-*  Internal registries are not intended to be open and used as a regular registry, that make migrations of your image from a cluster to another one impossible
-*  Images are very often updated by openshift build and my-image:latest on monday could be very different from my-image:latest on tuesday. 
+# Important notice for openshift 4.18 and above 
 
-This blueprint ensure that you capture the state of your imagestream with its different tags along your application state. That make migration and restoration of your app seamless.
+Openshift 4.18 does not enable by default the internal registry depending of you instalation. Kasten will fail in backing up the ImageStreamTag if you don't enable it with the errror message 
 
-## How it works
+```
+builder sa cannot get credentials
+```
 
-We use skopeo in the [imagestream blueprint](./imagestream-bp.yaml). 
-*  At backup skopeo will push the internal images to an external registry
-*  At restore skopeo will push the external image to the internal registry 
+The simplest way to enable it in this case is 
+```
+oc patch configs.imageregistry.operator.openshift.io/cluster --type merge --patch '{"spec":{"storage":{"emptyDir":{}}}}'
+oc patch configs.imageregistry.operator.openshift.io/cluster --type merge --patch '{"spec":{"managementState":"Managed"}}'
+```
 
-## Example installation 
 
-### Create a namespace with an imagestreams and tags
+## Create various imageStreams 
 
 ```
 oc create ns is-test && oc project is-test
 oc create is python-mic
 
 # create tags from different image and reference
-oc tag --source=docker python:latest                            is-test/python-mic:1.0      
-oc tag is-test/python-mic:1.0                                   is-test/python-mic:active   
+oc tag --source=docker python:latest is-test/python-mic:1.0      
+oc tag is-test/python-mic:1.0 is-test/python-mic:active   
 oc tag --source=docker mcr.microsoft.com/azure-functions/python is-test/python-mic:azure-functions        
-# build a django image on top of python:3.8-ubi8  -> python-mic:django 
-oc create -f bc.yaml 
-oc start-build my-build
+
+# build a django image on top of python:3.8-ubi8 with a source strategy
+oc -n openshift create is python
+oc tag --source=docker registry.access.redhat.com/ubi8/python-38 openshift/python:3.8-ubi8    
+oc create -f bc1.yaml 
+oc start-build source-build-config
+oc logs buildconfig/source-build-config -f
+
+# build a dummy image on top of alpine with a docker strategy
+oc create is alpine-is
+oc create -f bc2.yaml 
+oc start-build docker-build-config
+oc logs buildconfig/docker-build-config
+
 
 # list all the tags we created in this is.
-oc get is python-mic -o jsonpath='{.status.tags[*].tag}'    
-1.0 active azure-functions django
+oc get is
 ```
 
-
-### install the blueprint 
-
-```
-oc create -f imagestream-bp.yaml 
-# annotate the is 
-oc annotate -n is-test is python-mic kanister.kasten.io/blueprint='imagestream-bp' 
-```
-
-
-Create a secret that configure the external and internal registry. 
-```
-oc create secret generic image-management \
-   --from-literal="externalRegistry=docker.io" \
-   --from-literal="externalRegistryNamespace=michaelcourcy" \
-   --from-literal="externalRegistryUser=<USERNAME>" \
-   --from-literal="externalRegistryPwd=<PASSWORD>" \
-   --from-literal="internalRegistryBackup=image-registry.openshift-image-registry.svc:5000" \
-   --from-literal="internalRegistryRestore=image-registry.openshift-image-registry.svc:5000" \
-   -n is-test
-```
-
-Kanister pod execute skopeo with the default service account and must pickup the builder secret to push/pull from/to the internal registry.
-
-Make sure service account default can read secret : 
-```
-oc create role secret-reader --verb=get --verb=list --verb=watch --resource=secrets -n is-test
-oc create rolebinding default-secret-reader --role=secret-reader --serviceaccount=is-test:default -n is-test
-```
-
-### Using a blueprint binding instead of an annotation 
-
-If you don't want to annotate each imagestream because you have a lot of them and this activity may be tedious
-and error prone, you can use a blueprintbinding, I provide an example 
-[here](./imagestream-blueprint-binding.yaml) that will apply this blueprint for all imagestreams, except for imagestream that has one of this annotations : 
-- `kanister.kasten.io/blueprint` : for this specific imagestream you specify another blueprint
-- `kanister.kasten.io/nobackup` : you simply want to exlude this imagestream from the blueprint binding 
-
-To apply the blueprint binding execute 
-```
-oc create -f imagestream-blueprint-binding.yaml
-```
-
-> **Be aware** that now this blueprint will be applied to any imagestream that you will backup and the blueprint expect a secret `image-management` in the namespace of the imagestream, if this secret is not there you'll have an error.
 
 # Backup and restore
 
-Now you can backup this namespace with kasten. You'll see new images in your registry with this names :
-```
-<your-registry>/<registry-namespace>/python-mic:1.O-<backup_date>
-<your-registry>/<registry-namespace>/python-mic:active-<backup_date>
-<your-registry>/<registry-namespace>/python-mic:azure-functions-<backup_date>
-```
+Now you can backup this namespace with kasten ensure you specify the profile for image location
 
-This is what happens with my personal account on docker.io.
+![Location profile for the images](image.png)
 
-![Images in docker.io](./docker-io.png)
-
-When you restore to another cluster even in another namespace the images will be pushed back to the internal registry of this cluster, creating automatically the imagestream with the imagestream tags.
-
-## To debug the blueprint
-
-Here is a tip to log the temporary kanister pod that will be created to execute skopeo.
+You also may need to increase the value of ephemeralPVCOverhead when the image are taking more space than the temporary PVC we create for them :
 
 ```
-while true; do oc logs -f -n is-test -l createdBy=kanister; sleep 2; done
+--set ephemeralPVCOverhead="O.3"
 ```
 
+Often fix the issue 
+```
+stdout: error writing layer: write
+          /var/lib/image/a88f54a406786a52a1293bf1ce8251745a0187caf9c3a654717e2a\
+          de07dd722d/blobs/sha256/b82ddf37e40febb44c258077df217aef2b72f65c2c190\
+          ecd3a165ae894256e113723449066: no space left on device
+
+          stderr: imagemover pull IMAGE TARBALL [flags]\r
+```
